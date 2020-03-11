@@ -187,9 +187,15 @@ def main():
     plan = plan_next_checks(services, args.period)
 
     if args.noop:
+        infos = 0
         for host, service, next_check in plan:
-            logging.info("Would set next_check to %s for %s ! %s", human_datetime(next_check), host, service)
+            logging.info("Would set next_check to %s for %s!%s", human_datetime(next_check), host, service)
+            infos += 1
+            if infos > 40:
+                logging.info("... Skipping %d more services", len(plan) - 40)
+                break
 
+        logging.info("I would send %d commands to Icinga", len(plan))
         logging.warning("Stopping due to --noop")
         return
 
