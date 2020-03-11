@@ -34,6 +34,18 @@ Here is a brief example to re-distribute checks over the next 12 hours (720 minu
 
 Please make sure to check: `./icinga-reschedule.py --help`
 
+## Dependencies
+
+It should run with Python 2.7 and higher, with external packages:
+
+* [mysql-connector-python](https://pypi.org/project/mysql-connector-python/)
+
+On CentOS / RHEL 7 with [EPEL](https://fedoraproject.org/wiki/EPEL):
+
+```
+yum install mysql-connector-python
+```
+
 ## Limitations
 
 * Only build for IDO as data source
