@@ -34,7 +34,7 @@ class IdoData:
         self.database = database
         self.username = username
         self.password = password
-        self.port = port
+        self.port = port if port else 3306
 
         self.connection = mysql.connector.connect(
             host=self.host,
@@ -112,7 +112,7 @@ def parse_arguments(argv=None):
     parser.add_argument('--filter-service', metavar='pattern', help='Service name filter pattern', required=True)
 
     parser.add_argument('--period', metavar='minutes', help='Period of time in minutes to lay next_check in',
-                        default=60)
+                        type=int, default=60)
 
     parser.add_argument('--noop', '-n', action='store_true', help='Stop after planning and report')
 
