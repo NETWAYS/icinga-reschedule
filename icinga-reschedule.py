@@ -18,6 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import sys
 import time
 import logging
 import datetime
@@ -211,7 +212,12 @@ def main():
     logging.debug("Running search query with params: %s", params)
 
     services = ido.fetchall(query, params)
-    logging.info("Found %d services", len(services))
+    count = len(services)
+    logging.info("Found %d services", count)
+
+    if count == 0:
+        logging.warning("Noting to do...")
+        sys.exit(1)
 
     plan = plan_next_checks(services, args.period)
 
