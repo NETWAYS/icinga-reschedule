@@ -59,15 +59,24 @@ class IdoData:
 
 
 class CommandPipeSender:
-    def __init__(self, path):
+    def __init__(self, path, ignore_missing_pipe=False):
         self.path = path
+        self.ignore_missing_pipe = ignore_missing_pipe
 
-        if not os.path.exists(path):
+    def validate_pipe(self, instance=None):
+        path = self.path
+
+        if '%s' in path and instance:
+            path = path % instance
+
+        if self.ignore_missing_pipe and not os.path.exists(path):
             raise Exception("Command pipe path does not exist: %s", path)
 
         # TODO: check for pipe?
 
-    def send_command(self, command, args):
+        return path
+
+    def send_command(self, command, args, instance=None):
         """
         Low-level implementation for sending the actual command
         """
@@ -77,12 +86,12 @@ class CommandPipeSender:
             ";".join(str(x) for x in args)
         )
 
-        logging.debug("Sending command: %s" % line.strip())
+        logging.debug("Sending command: %s%s" % (line.strip(), ' to instance %s' % instance if instance else ''))
 
-        with open(self.path, mode='a') as handle:
+        with open(self.validate_pipe(instance), mode='a') as handle:
             handle.write(line)
 
-    def schedule_check(self, host, service=None, check_time=None):
+    def schedule_check(self, host, service=None, check_time=None, instance=None):
         """
         Interface for SCHEDULE_HOST_CHECK and SCHEDULE_SVC_CHECK
         """
@@ -90,9 +99,9 @@ class CommandPipeSender:
             check_time = time.time()
 
         if not service:
-            self.send_command('SCHEDULE_HOST_CHECK', [host, check_time])
+            self.send_command('SCHEDULE_HOST_CHECK', [host, check_time], instance=instance)
         else:
-            self.send_command('SCHEDULE_SVC_CHECK', [host, service, check_time])
+            self.send_command('SCHEDULE_SVC_CHECK', [host, service, check_time], instance=instance)
 
 
 def parse_arguments(argv=None):
@@ -146,9 +155,9 @@ def plan_next_checks(data, period):
     result = []
     next_check = begin
 
-    for host, service in data:
+    for host, service, instance in data:
         logging.debug("Planning time %s for %s!%s", human_datetime(next_check), host, service)
-        result.append((host, service, int(next_check)))
+        result.append((host, service, int(next_check), instance))
         next_check += interval
 
     return result
@@ -156,8 +165,8 @@ def plan_next_checks(data, period):
 
 def list_plan(plan, limit=10, begin=0):
     lines = 0
-    for host, service, next_check in plan[begin:]:
-        logging.info("Would set next_check to %s for %s!%s", human_datetime(next_check), host, service)
+    for host, service, next_check, instance in plan[begin:]:
+        logging.info("Would set next_check to %s for %s!%s on %s", human_datetime(next_check), host, service, instance)
         lines += 1
         if lines > limit:
             logging.info("... Skipping %d more lines", len(plan) - limit * 2)
@@ -185,9 +194,11 @@ def main():
     query = """
     SELECT
       so.name1 as host,
-      so.name2 as service
+      so.name2 as service,
+      i.instance_name as instance
     FROM icinga_services s
     INNER JOIN icinga_objects so ON so.object_id = s.service_object_id
+    LEFT JOIN icinga_instances i ON i.instance_id = so.instance_id
     WHERE so.is_active = 1 AND so.name2 LIKE %s
     """
 
@@ -212,13 +223,18 @@ def main():
         return
 
     sender = CommandPipeSender(path=args.command_pipe)
+    # Only for special debugging
+    # if args.debug:
+    #     sender.ignore_missing_pipe = True
 
     commands = 0
-    for host, service, next_check in plan:
-        sender.schedule_check(host, service, next_check)
+    begin = time.time()
+    for host, service, next_check, instance in plan:
+        sender.schedule_check(host, service, next_check, instance)
         commands += 1
 
-    logging.info("Sent %d commands to Icinga" % commands)
+    duration = time.time() - begin
+    logging.info("Sent %d commands to Icinga in %0.2f seconds" % (commands, duration))
 
 
 if __name__ == '__main__':
