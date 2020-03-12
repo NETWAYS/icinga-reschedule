@@ -154,6 +154,19 @@ def plan_next_checks(data, period):
     return result
 
 
+def list_plan(plan, limit=10, begin=0):
+    lines = 0
+    for host, service, next_check in plan[begin:]:
+        logging.info("Would set next_check to %s for %s!%s", human_datetime(next_check), host, service)
+        lines += 1
+        if lines > limit:
+            logging.info("... Skipping %d more lines", len(plan) - limit * 2)
+            break
+
+    if begin == 0 and len(plan) > limit:
+        list_plan(plan, limit, len(plan) - limit)
+
+
 def main():
     args = parse_arguments()
 
@@ -192,13 +205,7 @@ def main():
     plan = plan_next_checks(services, args.period)
 
     if args.noop:
-        infos = 0
-        for host, service, next_check in plan:
-            logging.info("Would set next_check to %s for %s!%s", human_datetime(next_check), host, service)
-            infos += 1
-            if infos > 40:
-                logging.info("... Skipping %d more services", len(plan) - 40)
-                break
+        list_plan(plan, limit=10)
 
         logging.info("I would send %d commands to Icinga", len(plan))
         logging.warning("Stopping due to --noop")
