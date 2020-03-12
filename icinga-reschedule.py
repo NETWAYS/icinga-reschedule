@@ -130,20 +130,25 @@ def plan_next_checks(data, period):
     length = len(data)
 
     period_sec = period * MINUTE
-    begin = int(time.time()) + 5 * MINUTE
+    begin = time.time() + 5 * MINUTE
     end = begin + period_sec
 
-    interval = period_sec / length
+    interval = period_sec / float(length)
 
-    logging.info("Rescheduling %d checks with %d second offset until %s",
-                 length, interval, human_datetime(end))
+    if interval < 1:
+        interval_str = "%0.6f" % interval
+    else:
+        interval_str = str(int(interval))
+
+    logging.info("Rescheduling %d checks with %s second offset until %s",
+                 length, interval_str, human_datetime(end))
 
     result = []
     next_check = begin
 
     for host, service in data:
         logging.debug("Planning time %s for %s!%s", human_datetime(next_check), host, service)
-        result.append((host, service, next_check))
+        result.append((host, service, int(next_check)))
         next_check += interval
 
     return result
