@@ -91,17 +91,17 @@ class CommandPipeSender:
         with open(self.validate_pipe(instance), mode='a') as handle:
             handle.write(line)
 
-    def schedule_check(self, host, service=None, check_time=None, instance=None):
+    def schedule_forced_check(self, host, service=None, check_time=None, instance=None):
         """
-        Interface for SCHEDULE_HOST_CHECK and SCHEDULE_SVC_CHECK
+        Interface for SCHEDULE_FORCED_HOST_CHECK and SCHEDULE_FORCED_SVC_CHECK
         """
         if not check_time:
             check_time = time.time()
 
         if not service:
-            self.send_command('SCHEDULE_HOST_CHECK', [host, check_time], instance=instance)
+            self.send_command('SCHEDULE_FORCED_HOST_CHECK', [host, check_time], instance=instance)
         else:
-            self.send_command('SCHEDULE_SVC_CHECK', [host, service, check_time], instance=instance)
+            self.send_command('SCHEDULE_FORCED_SVC_CHECK', [host, service, check_time], instance=instance)
 
 
 def parse_arguments(argv=None):
@@ -230,7 +230,7 @@ def main():
     commands = 0
     begin = time.time()
     for host, service, next_check, instance in plan:
-        sender.schedule_check(host, service, next_check, instance)
+        sender.schedule_forced_check(host, service, next_check, instance)
         commands += 1
 
     duration = time.time() - begin
